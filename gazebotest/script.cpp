@@ -54,7 +54,8 @@ cin >> yVal;
 cout << "What is z-coordinate?" << endl;
 cin >> zVal;
 
-model.open("/home/reu-cat/models/gazebo_models/"+modelName+"/model.sdf");
+// This address should be set to wherever you store the models on your computer.
+model.open("/home/dsml-world/models/gazebo_models/"+modelName+"/model.sdf");
 if (model.is_open())
   cout << "Model successful" << endl;
   else
