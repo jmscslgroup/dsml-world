@@ -267,7 +267,116 @@ define([
         function getScript() {
             var scriptFile = '';
 
-            scriptFile += "#!/bin/bash\n\n";
+
+
+            scriptFile += "import roslaunch\n" +
+                "import rospy, rosbag\n" +
+                "import sys, math, time\n" +
+                "import signal\n" +
+                "import subprocess, shlex\n" +
+                "from subprocess import call\n" +
+                "import sys\n" +
+                "import signal\n" +
+                "import psutil\n" +
+                "import numpy as np\n" +
+                "import os\n" +
+                "import subprocess\n" +
+                "\n" +
+                "\n" +
+                "\n" +
+                "class catlaunch:\n" +
+                "    def __init__(self):\n" +
+                "        call([\"pkill\", \"ros\"])\n" +
+                "        call([\"pkill\", \"gzserver\"])\n" +
+                "        call([\"pkill\", \"gzclient\"])\n" +
+                "        time.sleep(2)\n" +
+                "    def spawn(self, name):\n" +
+                "\n" +
+                "        \"\"\"Start roscore\"\"\"\n" +
+                "        self.roscore = subprocess.Popen('roscore', stdout=subprocess.PIPE, shell=True)\n" +
+                "        self.roscore_pid = self.roscore.pid\n" +
+                "        time.sleep(5)\n" +
+                "        rospy.init_node('dsmlworld', anonymous=True)\n" +
+                "\n" +
+                "        uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)\n" +
+                "        roslaunch.configure_logging(uuid)\n" +
+                "\n" +
+                "        #Object to launch worldfile\n" +
+                "        launch = roslaunch.parent.ROSLaunchParent(uuid,[name])\n" +
+                "\n" +
+                "        #Object to spawn catvehicle in world\n" +
+                "\n" +
+                "\n" +
+                "        launchfile = [name]\n" +
+                "\n" +
+                "        launch.start()\n" +
+                "        print('World launched.')\n" +
+                "        subprocess.Popen([\"gzclient\"])\n" +
+                "        time.sleep(3)\n" +
+                "\n" +
+                "    def close_program(self):\n" +
+                "\n" +
+                "        print('Now killing roscore')\n" +
+                "        #kill the child process of roscore\n" +
+                "        try:\n" +
+                "            parent = psutil.Process(self.roscore_pid)\n" +
+                "            print(parent)\n" +
+                "        except psutil.NoSuchProcess:\n" +
+                "            print(\"Parent process doesn't exist.\")\n" +
+                "            return\n" +
+                "        children = parent.children(recursive=True)\n" +
+                "        print(children)\n" +
+                "        for process in children:\n" +
+                "            print(\"Attempted to kill child: \" + str(process))\n" +
+                "            process.send_signal(signal.SIGTERM)\n" +
+                "\n" +
+                "        #kill the roscore\n" +
+                "        self.roscore.terminate()\n" +
+                "        #Wait to prevent the creation of zombie processes.\n" +
+                "        self.roscore.wait()\n" +
+                "\n" +
+                "        call([\"pkill\", \"ros\"])\n" +
+                "        call([\"pkill\", \"roscore\"])\n" +
+                "        call([\"pkill\", \"rosout\"])\n" +
+                "        call([\"pkill\", \"rosmaster\"])\n" +
+                "        call([\"pkill\", \"gzserver\"])\n" +
+                "        call([\"pkill\", \"gzclient\"])\n" +
+                "\n" +
+                "\n" +
+                "def main(argv):\n" +
+                "    cl = catlaunch()\n";
+
+            for(var i = 0; i < modelJson.worldNames.length; i++)
+            {
+                scriptFile +=
+                    "    subprocess.Popen([\"mv\",\"/home/reu-cat/Downloads/" + modelJson.name + "/launch/" +
+                    modelJson.worldNames[i] + ".launch\",\"" +
+                    "/home/reu-cat/catvehicle_ws/src/catvehicle/launch\"])\n";
+
+                scriptFile +=
+                    "    subprocess.Popen([\"mv\",\"/home/reu-cat/Downloads/" + modelJson.name + "/worlds/" +
+                    modelJson.worldNames[i] + ".world\",\"" +
+                    "/home/reu-cat/catvehicle_ws/src/catvehicle/worlds\"])\n";
+            }
+
+            for(var i = 0; i < modelJson.worldNames.length; i++){
+                scriptFile += "    cl.spawn(\"/home/reu-cat/catvehicle_ws/src/catvehicle/launch/" +
+                    modelJson.worldNames[i] + ".launch\")\n" +
+                    "\n" +
+                    "    time.sleep(30)\n" +
+                    "\n" +
+                    "    cl.close_program()\n" +
+                    "\n" +
+                    "    time.sleep(10)\n" +
+                    "\n";
+
+            }
+
+            scriptFile += "if __name__ == '__main__':\n" +
+                "    main(sys.argv[1:])\n";
+
+            /*scriptFile += "#!/bin/bash\n\n";
+
 
             // Move world and launchfiles to ros directory.
             // TODO: change directory from catvehicle to (find).
@@ -284,21 +393,27 @@ define([
                     "~/catvehicle_ws/src/catvehicle/worlds\n";
             }
 
-            // TODO: implement script that runs each
-            // Current script only runs first map
+            scriptFile +=
+            "eval cd ~/catvehicle_ws/src/catvehicle/launch\n";
 
-            /*modelJson.worldNames.forEach(){
-                "worldname=" + node.worldNames[i] +".launch\n" +
-                "eval cd ~\n" +
-                "eval cd catvehicle_ws/src/catvehicle/launch\n" +
-                "eval roslaunch catvehicle $worldname& \n" +
-                "eval gzclient\n" +
-                "eval ^C";
-            }*/
+            for(var i = 0; i < modelJson.worldNames.length; i++){
+                scriptFile +=
+                    "eval roslaunch catvehicle " + modelJson.worldNames[i] +".launch& \n" +
+                    "ROS_PID=$(pidof roslaunch)\n" +
+                    "eval gzclient&\n" +
+                    "GZ_PID=$(pidof gzclient)\n"+
+                    "eval sleep 15\n" +
+                    "eval kill -9 $GZ_PID\n" +
+                    "eval kill -9 $ROS_PID\n";
+            }
 
-            scriptFile += "worldname=" + modelJson.worldNames[0] +".launch\n" +
+            /*scriptFile += "worldname=" + modelJson.worldNames[0] +".launch\n" +
             "eval roslaunch catvehicle $worldname& \n" +
-            "eval gzclient\n";
+            "eval gzclient\n";*/
+
+
+
+
 
             return scriptFile;
         }
@@ -309,8 +424,8 @@ define([
             readMe +=
                 "To run these: Put the worldfiles in the world folder in your ros directory,\n"+
                 "put the launchfiles in the launch folder of same, and run the launch files for the" +
-                "respective worldfiles to launch them. To use the bash script, you must do " +
-                "\"chmod u+x script\". Please make sure you extract the entire ZIP file into the" +
+                "respective worldfiles to launch them. To use the python script, you must do " +
+                "\"python2 script.py\". Please make sure you extract the entire ZIP file into the" +
                 "Downloads folder. Please modify the script generated by plugin to accomodate for " +
                 "user name or ROS folder location.";
 
@@ -495,7 +610,7 @@ define([
 
             async function getFilesToAdd() {
                 var script = getScript();
-                filesToAdd["script"] = script;
+                filesToAdd["script.py"] = script;
                 for (let i = 0; i < modelJson.worlds.length; i += 1) {
                     var worldFile = modelJson.worlds[i],
                         worldName = modelJson.worldNames[i],
