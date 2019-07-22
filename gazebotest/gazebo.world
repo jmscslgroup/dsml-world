@@ -87,13 +87,12 @@
     </spherical_coordinates>
  
 <model name="bus">
-<pose frame=''>5 5 1 -0 0 0</pose>
+<pose frame=''>5 2 0.05 -0 0 0</pose>
     <static>true</static>
     <link name="link">
       <collision name="collision">
         <geometry>
           <mesh>
-            <scale>0.01 0.01 0.01</scale>
             <uri>model://bus/meshes/bus.obj</uri>
           </mesh>
         </geometry>
@@ -101,30 +100,7 @@
       <visual name="visual">
         <geometry>
           <mesh>
-            <scale>0.01 0.01 0.01</scale>
             <uri>model://bus/meshes/bus.obj</uri>
-          </mesh>
-        </geometry>
-      </visual>
-    </link>
-  </model>
-<model name="ambulance">
-<pose frame=''>2 2 2 -0 0 0</pose>
-    <static>true</static>
-    <link name="link">
-      <collision name="collision">
-        <geometry>
-          <mesh>
-            <scale>0.0254 0.0254 0.0254</scale>
-            <uri>model://ambulance/meshes/ambulance.obj</uri>
-          </mesh>
-        </geometry>
-      </collision>
-      <visual name="visual">
-        <geometry>
-          <mesh>
-            <scale>0.0254 0.0254 0.0254</scale>
-            <uri>model://ambulance/meshes/ambulance.obj</uri>
           </mesh>
         </geometry>
       </visual>

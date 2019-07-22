@@ -15,6 +15,8 @@ string xVal = "";
 string yVal = "";
 string zVal = "";
 int numModels = 0;
+cout << "Welcome to Alex's super cool gazebo worldmaker!" << endl;
+cout << "WARNING: Only works with models that have no innate <pose>!" << endl;
 cout << "How many models?" << endl;
 cin >> numModels;
 
@@ -55,7 +57,7 @@ cout << "What is z-coordinate?" << endl;
 cin >> zVal;
 
 // This address should be set to wherever you store the models on your computer.
-model.open("/home/dsml-world/models/gazebo_models/"+modelName+"/model.sdf");
+model.open("/home/reu-cat/dsml-world/models/gazebo_models/"+modelName+"/model.sdf");
 if (model.is_open())
   cout << "Model successful" << endl;
   else
@@ -107,7 +109,7 @@ cout << "Copied gazebo2.txt" << endl;
 
 gazWorld.close();
 
-cout << "Done!" << endl;
+cout << "Done! Now run \" gazebo gazebo.world \" to see your world!" << endl;
 
 return 0;
 }

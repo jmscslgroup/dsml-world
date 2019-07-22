@@ -61,17 +61,48 @@ define([
         this.logger.error('This is an error message.');
         */
 
+            // TODO: Change metamodel architecture: Should be objects that contain worlds.
+
         var self = this,
             core = this.core,
             logger = this.logger,
             modelJson = {
                 name: '',
+                worldFiles: [],
+                launchFiles: []
+                },
+            activeNode = this.activeNode;
+
+        function getWorlds(node)
+        {
+            var worldData={
                 models: [],
                 planes: [],
                 posModels: [],
-                jerWorlds: []
-                },
-            activeNode = this.activeNode;
+                jerWorlds: [],
+                cityWorldSs: []
+            }
+
+
+            var childrenPaths = core.getChildrenPaths(node);
+
+            for (var i = 0; i < childrenPaths.length; i += 1) {
+                var nodeD = node[childrenPaths[i]];
+                if (self.isMetaTypeOf(nodeD, self.META.road_with_jerseyB)) {
+                    getJerseyWorld(nodeD);
+                } else if (self.isMetaTypeOf(nodeD, self.META.city_block_straight)) {
+                    getCityBlockStraight(nodeD);
+                } else if (self.isMetaTypeOf(nodeD, self.META.Models)) {
+                    getModels(nodeD);
+                } else if (self.isMetaTypeOf(nodeD, self.META.Planes)) {
+                    getPlanes(nodeD);
+                } else if (self.isMetaTypeOf(nodeD, self.META.PositionModel)) {
+                    getPosModels(nodeD);
+                }
+            }
+
+            modelJson.worlds.push(worldData);
+        }
 
         function getModels(node)
         {
@@ -93,7 +124,7 @@ define([
             modelData.yi_coord = core.getAttribute(node, 'yi_location');
             modelData.zi_coord = core.getAttribute(node, 'zi_location');
 
-            modelJson.models.push(modelData);
+            worldData.models.push(modelData);
         }
 
         function getPosModels(node){
@@ -102,7 +133,7 @@ define([
                 x_coord: 0,
                 y_coord: 0,
                 yaw: 0
-            }
+            };
 
             posModelData.name = core.getAttribute(node, 'name');
             var posModelPos = self.core.getRegistry(node, 'position');
@@ -111,11 +142,10 @@ define([
             posModelData.x_coord = posModelPos.x / 10;
             posModelData.y_coord = posModelPos.y / 10;
 
-            //not sure of angle variable?
-            //posModelData.yaw = posModelPos.angle;
-            posModelData.yaw = core.getAttribute(node, 'yaw');
+            // Angle is stored in "rotation"
+            posModelData.yaw = self.core.getRegistry(node, 'rotation');
 
-            modelJson.posModels.push(posModelData);
+            worldData.posModels.push(posModelData);
 
         }
 
@@ -131,7 +161,7 @@ define([
             planeData.x_coord = core.getAttribute(node, 'x_location');
             planeData.y_coord = core.getAttribute(node, 'y_location');
 
-            modelJson.planes.push(planeData);
+            worldData.planes.push(planeData);
         }
 
         function getJerseyWorld(node)
@@ -148,29 +178,106 @@ define([
             jerWorldData.x_coord = jerWorldPos.x / 10;
             jerWorldData.y_coord = jerWorldPos.y / 10;
 
-            modelJson.jerWorlds.push(jerWorldData);
+            worldData.jerWorlds.push(jerWorldData);
+        }
+
+        function getCityBlockStraight(node)
+        {
+            var cityBlockSData = {
+                x_coord: 0,
+                y_coord: 0
+            };
+
+            cityBlockSData.name = core.getAttribute(node, 'name');
+            var cityBlockSPos = self.core.getRegistry(node, 'position');
+
+            // the "position" values are pretty big so we will divide them by 10 to scale down.
+            cityBlockSData.x_coord = cityBlockSPos.x / 10;
+            cityBlockSData.y_coord = cityBlockSPos.y / 10;
+
+            worldData.cityWorldSs.push(cityBlockSData);
+        }
+
+        function getLaunchInfo(node){
+            var launchFileData = {
+                name: '',
+            }
+            var worldName = core.getAttribute(activeNode, 'name');
+            name = worldName;
+            modelJson.launchFiles.push(launchFileData);
+
         }
 
 
-        function getWorldFile(){
+        // This produces a launchfile that will spawn the catVehicle in a world.
+        function getLaunchFile(node){
+            var worldName = node.name;
+            var launchFile = '';
+
+            launchFile +=
+                "<!--This is a custom ros catvehicle launchfile created by the worldmaker WebGME plugin.-->\n"+
+                "<launch>\n<arg name=\"paused\" default=\"false\"/>\n"+
+                "<arg name=\"use_sim_time\" default=\"true\"/>\n"+
+                "<arg name=\"gui\" default=\"false\"/>\n" +
+                "<arg name=\"headless\" default=\"false\"/>\n" +
+                "<arg name=\"debug\" default=\"false\"/>\n " +
+                "<include file=\"$(find gazebo_ros)/launch/empty_world.launch\">\n" +
+
+                // Should update to include custom name.
+                "<arg name=\"world_name\" value=\"$(find catvehicle)/worlds/" + worldName +
+                ".world\"/>\n" +
+                "<arg name=\"debug\" value=\"$(arg debug)\" />\n" +
+                "<arg name=\"gui\" value=\"$(arg gui)\" />\n" +
+                "<arg name=\"paused\" value=\"$(arg paused)\"/>\n" +
+                "<arg name=\"use_sim_time\" value=\"$(arg use_sim_time)\"/>\n"+
+                "<arg name=\"headless\" value=\"$(arg headless)\"/>\n" +
+                "</include>" +
+                "<group ns=\"catvehicle\">\n" +
+                "<param name=\"robot_description\" command=\"$(find xacro)/xacro.py "+
+                "\'$(find catvehicle)/urdf/catvehicle.xacro\' roboname:=\'catvehicle\'\" />\n"+
+                "<include file=\"$(find catvehicle)/launch/catvehicle.launch\">\n" +
+                "<arg name=\"robot_name\" value=\"catvehicle\"/>\n" +
+
+                // Could include position data here?
+                "<arg name=\"init_pose\" value=\"-x 0 -y 0 -z 0\"/>\n" +
+                "<arg name=\"config_file\" value=\"catvehicle_control.yaml\"/>\n" +
+                "</include>\n</group>\n\n </launch>";
+
+            modelJson.launchFiles.push(launchFile);
+        }
+
+        function getReadMe(){
+            var readMe = '';
+
+            readMe += "CONGRATS. You created a worldfile with the worldmaker WebGME plugin.\n" +
+                "If you put in a CatVehicle then you also have produced a launchfile.\n" +
+                "To use the launchfile you must put the worldfile in your ROS worlds\n" +
+                "directory and you must put the launchfile in your ROS launchfile directory.\n" +
+                "Then, launch ROS, and run the plugin. with \"roslaunch catvehicle <launchfile>\".";
+
+            return readMe;
+
+        }
+
+        function getWorldFile(node){
 
             var worldFile = '';
 
             worldFile += "<?xml version=\"1.0\" ?><sdf version=\"1.4\">\n<world name=\"default\">\n<include>\n<uri>model://ground_plane</uri>" +
         "\n</include>\n<include>\n<uri>model://sun</uri>\n</include>";
 
-            modelJson.models.forEach(function (data){
+            worldData.models.forEach(function (data){
                 worldFile += "\n<include>\n<name>"+data.name+"</name>\n<pose>"+ data.x_coord + " " + data.y_coord + " " +
                 data.z_coord + " " + data.xi_coord + " " + data.yi_coord + " " + data.zi_coord + "</pose>\n<uri>model://" +
                 data.name + "</uri>\n</include>";
             });
 
-            modelJson.planes.forEach(function (data){
+            worldData.planes.forEach(function (data){
                 worldFile += "\n<include>\n<name>"+data.name+"</name>\n<pose>" + data.x_coord + " " + data.y_coord + " " +
                     "0 0 0 0 </pose>\n<uri>model://" + data.name + "</uri>\n</include>";
             });
 
-            modelJson.posModels.forEach(function (data){
+            worldData.posModels.forEach(function (data){
                 worldFile += "\n<include>\n<name>"+data.name+"</name>\n<pose>" + data.x_coord + " " + data.y_coord + " " +
                     "1 0 0 " + data.yaw +  "</pose>\n<uri>model://" + data.name + "</uri>\n</include>";
             });
@@ -178,7 +285,7 @@ define([
             // This takes all "jerWorld" objects and adds their location data to each object's data, therefore
             // translating the world accordingly.
             // NOTE: each object's data needs to be converted to float before it can be added.
-            modelJson.jerWorlds.forEach(function(data){
+            worldData.jerWorlds.forEach(function(data){
                 worldFile += "\n" +
 
                     "<include>\n<name>'asphalt_plane'</name>" +
@@ -218,6 +325,46 @@ define([
                     "<uri>model://postbox</uri></include>\n\n";
             });
 
+
+
+            // Follows above example to make another world: cityBlockStraight.
+            worldData.cityWorldSs.forEach(function(data){
+                worldFile += "\n" +
+
+                    "<include><name>'asphalt_plane'</name>\n" +
+                    "<pose>" + (0+data.x_coord) + " " + (0+data.y_coord) + " 0 0 0 0</pose>" +
+                    "<uri>model://asphalt_plane</uri></include>\n \n " +
+
+                    "<include><name>'thrift_shop_1'</name>\n" +
+                    "<pose>" + (7.39531+data.x_coord) + " " + (5.76837+data.y_coord) + " 0 0 0 -1.56058 </pose>" +
+                    "<uri>model://thrift_shop</uri></include>\n\n" +
+
+                    "<include><name>'thrift_shop_2'</name>\n" +
+                    "<pose>" + (7.21913+data.x_coord) + " " + (-6.26468+data.y_coord) + " 0 0 0 -1.56058 </pose>" +
+                    "<uri>model://thrift_shop</uri></include>\n\n" +
+
+                    "<include><name>'prius_hybrid'</name>\n" +
+                    "<pose>" + (2.6235+data.x_coord) + " " + (-7.26293+data.y_coord) + " 0 0 0 -3.11416</pose>" +
+                    "<uri>model://prius_hybrid</uri></include>\n \n " +
+
+                    "<include><name>'law_office_1'</name>\n" +
+                    "<pose>" + (-7.60095+data.x_coord) + " " + (7.68313+data.y_coord) + " 0 0 0 1.58524</pose>" +
+                    "<uri>model://law_office</uri></include>\n \n " +
+
+                    "<include><name>'law_office_2'</name>\n" +
+                    "<pose>" + (-7.60095+data.x_coord) + " " + (0.515447+data.y_coord) + " 0 0 0 1.58524</pose>" +
+                    "<uri>model://law_office</uri></include>\n \n " +
+
+                    "<include><name>'law_office_3'</name>\n" +
+                    "<pose>" + (-7.60095+data.x_coord) + " " + (-6.21689+data.y_coord) + " 0 0 0 1.58524</pose>" +
+                    "<uri>model://law_office</uri></include>\n \n " +
+
+                    "<include><name>'asphalt_plane'</name>\n" +
+                    "<pose>" + (5.15149+data.x_coord) + " " + (0.518547+data.y_coord) + " 0 0 0 -1.55167</pose>" +
+                    "<uri>model://asphalt_plane</uri></include>\n \n ";
+
+            });
+
             worldFile  += "\n<gui fullscreen='0'>\n<camera name='user_camera'>\n<pose>20 -20 20 0.000000 0.6 2.356190</pose>" +
                 "\n<view_controller>orbit</view_controller>\n</camera>\n</gui>\n</world></sdf>";
 
@@ -225,9 +372,8 @@ define([
         }
 
 
+        let artifact;
 
-        // This will save the changes. If you don't want to save;
-        // exclude self.save and call callback directly from this scope.
         self.loadNodeMap(this.activeNode)
             .then(function(nodes) {
                 var nodePath,
@@ -242,28 +388,66 @@ define([
 
                 for (var i = 0; i < childrenPaths.length; i += 1) {
                     node = nodes[childrenPaths[i]];
-                    if(self.isMetaTypeOf(node, self.META.CollectionOfModels)){
-                        // Must determine which by name.
-                        //if(core.getAttribute(activeNode, 'name') == "road_with_jerseyB"){
-                            getJerseyWorld(node);
-                        //}
-                    }else if (self.isMetaTypeOf(node, self.META.Models)) {
-                        getModels(node);
-                    }else if (self.isMetaTypeOf(node, self.META.Planes)) {
-                        getPlanes(node);
-                    }else if(self.isMetaTypeOf(node, self.META.PositionModel)){
-                        getPosModels(node);
-                    }
-                }
-                
-                self.logger.info('Extracted data:\n', JSON.stringify(modelJson, null, 2));
-                
-                var worldFile = getWorldFile();
-                
-                return self.blobClient.putFile(modelJson.name + '.world', worldFile);
-            })
 
+                    // These functions should add each world's information to the modelJSON's
+                    // world and launchfile directories.
+                    getLaunchInfo(node);
+                    getWorlds(node);
+                }
+
+                // TODO: make launchfile optional depending on if catvehicle is in.
+
+
+                var modelJsonStr = JSON.stringify(modelJson, null, 2);
+
+                // Pass this information to function that returns files in ZIP.
+                
+                // return self.blobClient.putFile('modelJsonStr', modelJsonStr);
+
+            })
+            .then(function (nodes) {
+
+                //outputting files
+                self.result.addArtifact(nodes);
+
+                // For each world file created we must create it and its launch file,
+                // and add that information to artifact.
+                var childrenPaths = core.getChildrenPaths(activeNode);
+
+                artifact = self.blobClient.createArtifact('outputFiles');
+
+                modelJson.worldFiles.forEach(function(data) {
+                    var worldFile = getWorldFile(data);
+                    var filename = 'worlds/' + data.name + '.world';
+                    artifact.addFilesAsSoftLinks({
+                        filename: worldFile
+                    });
+                });
+
+                modelJson.worldFiles.forEach(function(data){
+                    var launchFile = getWorldFile(data);
+                    var filename = 'launch/' + data.name + '.launch';
+                    artifact.addFilesAsSoftLinks({
+                        filename: launchFile
+                    });
+                });
+
+                artifact.addFilesAsSoftLinks({
+                    "readme": readme
+
+
+                });
+
+                return artifact;
+
+                //return self.blobClient.putFile(modelJson.name + '.launch', launchFile);
+                //return self.blobClient.putFile(modelJson.name + '.world', worldFile);
+            })
+            .then(function(/* Hashes */) {
+                return artifact.save();
+            })
             .then(function (metadataHash){
+
             self.result.addArtifact(metadataHash);
                 self.result.setSuccess(true);
                 callback(null, self.result);
