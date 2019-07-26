@@ -26,7 +26,7 @@ namespace gazebo
   std::vector<double> yMax;
  
  class boundingBoxPlugin : public WorldPlugin
- {  
+ {
   public: void Load(physics::WorldPtr _parent, sdf::ElementPtr /*sdf*/)
   {
   world = _parent;
@@ -39,42 +39,44 @@ namespace gazebo
     for(int i = 1; i <= totModels; i++) {
         //get model by index, then get bounding box
         obj = world->gazebo::physics::World::ModelByIndex(i);
-        ignition::math::Box boundingBox = obj->BoundingBox();
-        //get min and max values and store in temp varaibles
-        ignition::math::v4::Vector3<double> minVal = boundingBox.Min();
-        ignition::math::v4::Vector3<double> maxVal = boundingBox.Max();
-        //store min and max x and y values and names to a unique variable
-        modNames[i-1] = obj->GetName();
-        xMin.push_back(minVal[0]);
-        yMin.push_back(minVal[1]);
-        xMax.push_back(maxVal[0]);
-        yMax.push_back(maxVal[1]);
-        //TEST - print bounding box info - uncomment for verification
-        //std::cout<< modNames[i-1] << ":\n";
-        //std::cout<< "Min x is " << xMin[i-1] << "\n";
-        //std::cout<< "Min y is " << yMin[i-1] << "\n";
-        //std::cout<< "Max x is " << xMax[i-1] << "\n";
-        //std::cout<< "Max y is " << yMax[i-1] << "\n";
+            ignition::math::Box boundingBox = obj->BoundingBox();
+            //get min and max values and store in temp varaibles
+            ignition::math::v4::Vector3<double> minVal = boundingBox.Min();
+            ignition::math::v4::Vector3<double> maxVal = boundingBox.Max();
+            //store min and max x and y values and names to a unique variable
+            modNames[i-1] = obj->GetName();
+            xMin.push_back(minVal[0]);
+            yMin.push_back(minVal[1]);
+            xMax.push_back(maxVal[0]);
+            yMax.push_back(maxVal[1]);
+            //TEST - print bounding box info - uncomment for verification
+            //std::cout<< modNames[i-1] << ":\n";
+            //std::cout<< "Min x is " << xMin[i-1] << "\n";
+            //std::cout<< "Min y is " << yMin[i-1] << "\n";
+            //std::cout<< "Max x is " << xMax[i-1] << "\n";
+            //std::cout<< "Max y is " << yMax[i-1] << "\n";
     }
       //Collision detection for loop!
       for(int j = 0; j < totModels; j++) {
         for(int k = j + 1; k < totModels; k++) {
+            if(modNames[j] != "asphalt_plane" && modNames[k] != "asphalt_plane")
+            {
+            float d1x = xMin[k] - xMax[j];
+            float d1y = yMin[k] - yMax[j];
+            float d2x = xMin[j] - xMax[k];
+            float d2y = yMin[j] - yMax[k];
         
-        float d1x = xMin[k] - xMax[j];
-        float d1y = yMin[k] - yMax[j];
-        float d2x = xMin[j] - xMax[k];
-        float d2y = yMin[j] - yMax[k];
-        
-          if(d1x > 0.0f || d1y > 0.0f){
-            //TEST statement: uncomment for verification
-            //std::cout<< modNames[j] <<" and " << modNames[k] << " do not overlap.\n";
-          }
-          else if(d2x > 0.0f || d2y > 0.0f){
-            //TEST statement: uncomment for verification
-            //std::cout<< modNames[j] <<" and " << modNames[k] << " do not overlap.\n";
-          }
-          else {
-            std::cout<< "ERROR!\n" << modNames[j] <<" and " << modNames[k] << " are overlapping\n";
+            if(d1x > 0.0f || d1y > 0.0f){
+                //TEST statement: uncomment for verification
+                //std::cout<< modNames[j] <<" and " << modNames[k] << " do not overlap.\n";
+            }
+            else if(d2x > 0.0f || d2y > 0.0f){
+                //TEST statement: uncomment for verification
+                //std::cout<< modNames[j] <<" and " << modNames[k] << " do not overlap.\n";
+            }
+            else{
+                std::cout<< "ERROR!\n" << modNames[j] <<" and " << modNames[k] << " are overlapping\n";
+            }
           }
         }
       } 
@@ -83,3 +85,4 @@ namespace gazebo
  //Register this plugin with the simulator
  GZ_REGISTER_WORLD_PLUGIN(boundingBoxPlugin)
 }
+
