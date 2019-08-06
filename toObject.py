@@ -41,7 +41,7 @@ class catvehicle:
         isReady = input("Begin?: ")
         
         speed = 5.0
-        minDist = 5.0
+        minDist = 8.0
         
         currentDist = Float64()
         vel_msg = Twist()
